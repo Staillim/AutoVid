@@ -44,7 +44,6 @@ Todavia **no se considera un producto usable de punta a punta**, porque falta va
 - frontend/editor visual
 - pipeline IA narrativo
 - export final multi-escena validado
-- cache hit detection en `RenderPipeline.execute_scene_render`
 
 ## Arquitectura implementada hasta ahora
 

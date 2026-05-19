@@ -486,3 +486,151 @@ def test_websocket_disconnect_cleanup():
 
     # Verificar que no hay subscribers
     assert "test-job-2" not in progress_broadcaster._subscribers
+
+
+def test_job_completed_emits_cache_hit_false():
+    """job_completed sin cache_hit emite cache_hit=False."""
+    from app.domain.models import RenderJobResult, RenderPlan, RenderPlanOutputs, RenderPlanInput, RenderPlanFilterStage, TimelineScene, CompiledBackgroundClip, AssetKind, ZoomMotion
+
+    broadcaster = ProgressBroadcaster()
+    mgr = RenderJobManager(
+        processor=lambda req: None,
+        db_path=tmp_db_path_fixture(),
+        broadcaster=broadcaster,
+    )
+    try:
+        import asyncio
+
+        async def run_test():
+            req = _make_request()
+            job = await mgr.submit(req)
+
+            # Suscribirse ANTES de marcar como completado
+            job_queue = broadcaster.subscribe(job.job_id)
+
+            # Simular completion sin cache_hit
+            fake_result = RenderJobResult(
+                timeline_scene=TimelineScene(
+                    scene_id="s1", width=1920, height=1080, fps=30, duration_ms=5000,
+                    background_clip=CompiledBackgroundClip(
+                        absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO,
+                        trim_in_ms=0, trim_out_ms=5000, loop_mode="cut",
+                    ),
+                    overlay_clips=[], text_clips=[], zoom=ZoomMotion(), subtitle_ass_path=None,
+                ),
+                fingerprint="fp1",
+                render_plan=RenderPlan(
+                    plan_id="p1", scene_id="s1",
+                    timeline_scene=TimelineScene(
+                        scene_id="s1", width=1920, height=1080, fps=30, duration_ms=5000,
+                        background_clip=CompiledBackgroundClip(
+                            absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO,
+                            trim_in_ms=0, trim_out_ms=5000, loop_mode="cut",
+                        ),
+                        overlay_clips=[], text_clips=[], zoom=ZoomMotion(), subtitle_ass_path=None,
+                    ),
+                    inputs=[RenderPlanInput(input_id="bg", absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO, role="background")],
+                    filter_stages=[RenderPlanFilterStage(name="normalize_background", description="test")],
+                    outputs=RenderPlanOutputs(scene_output_path="/out.mp4", preview_output_path="/preview.png", manifest_output_path="/manifest.json"),
+                ),
+                ffmpeg_command=["ffmpeg"],
+                preview_command=["ffmpeg"],
+                cache_hit=False,
+            )
+            await mgr._mark_completed(job.job_id, fake_result)
+
+            # Dar tiempo al broadcaster para procesar
+            await asyncio.sleep(0.1)
+
+            events = []
+            while not job_queue.empty():
+                item = job_queue.get_nowait()
+                if item is not None:
+                    events.append(json.loads(item))
+
+            completed = [e for e in events if e["event_type"] == "job_completed"]
+            assert len(completed) == 1
+            assert completed[0]["data"]["cache_hit"] is False
+
+        asyncio.run(run_test())
+    finally:
+        mgr.dispose()
+        broadcaster.close_all()
+
+
+def test_job_completed_emits_cache_hit_true():
+    """job_completed con cache_hit=True emite cache_hit=True en WebSocket."""
+    from app.domain.models import RenderJobResult, RenderPlan, RenderPlanOutputs, RenderPlanInput, RenderPlanFilterStage, TimelineScene, CompiledBackgroundClip, AssetKind, ZoomMotion
+
+    broadcaster = ProgressBroadcaster()
+    mgr = RenderJobManager(
+        processor=lambda req: None,
+        db_path=tmp_db_path_fixture(),
+        broadcaster=broadcaster,
+    )
+    try:
+        import asyncio
+
+        async def run_test():
+            req = _make_request()
+            job = await mgr.submit(req)
+
+            # Suscribirse ANTES de marcar como completado
+            job_queue = broadcaster.subscribe(job.job_id)
+
+            # Simular completion con cache_hit=True
+            fake_result = RenderJobResult(
+                timeline_scene=TimelineScene(
+                    scene_id="s1", width=1920, height=1080, fps=30, duration_ms=5000,
+                    background_clip=CompiledBackgroundClip(
+                        absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO,
+                        trim_in_ms=0, trim_out_ms=5000, loop_mode="cut",
+                    ),
+                    overlay_clips=[], text_clips=[], zoom=ZoomMotion(), subtitle_ass_path=None,
+                ),
+                fingerprint="fp1",
+                render_plan=RenderPlan(
+                    plan_id="p1", scene_id="s1",
+                    timeline_scene=TimelineScene(
+                        scene_id="s1", width=1920, height=1080, fps=30, duration_ms=5000,
+                        background_clip=CompiledBackgroundClip(
+                            absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO,
+                            trim_in_ms=0, trim_out_ms=5000, loop_mode="cut",
+                        ),
+                        overlay_clips=[], text_clips=[], zoom=ZoomMotion(), subtitle_ass_path=None,
+                    ),
+                    inputs=[RenderPlanInput(input_id="bg", absolute_path="/bg.mp4", asset_kind=AssetKind.VIDEO, role="background")],
+                    filter_stages=[RenderPlanFilterStage(name="normalize_background", description="test")],
+                    outputs=RenderPlanOutputs(scene_output_path="/out.mp4", preview_output_path="/preview.png", manifest_output_path="/manifest.json"),
+                ),
+                ffmpeg_command=["ffmpeg"],
+                preview_command=["ffmpeg"],
+                cache_hit=True,
+            )
+            await mgr._mark_completed(job.job_id, fake_result)
+
+            # Dar tiempo al broadcaster para procesar
+            await asyncio.sleep(0.1)
+
+            events = []
+            while not job_queue.empty():
+                item = job_queue.get_nowait()
+                if item is not None:
+                    events.append(json.loads(item))
+
+            completed = [e for e in events if e["event_type"] == "job_completed"]
+            assert len(completed) == 1
+            assert completed[0]["data"]["cache_hit"] is True
+
+        asyncio.run(run_test())
+    finally:
+        mgr.dispose()
+        broadcaster.close_all()
+
+
+def tmp_db_path_fixture():
+    """Helper para crear path temporal de DB."""
+    import tempfile
+    td = tempfile.mkdtemp()
+    db_path = Path(td) / "jobs.db"
+    return db_path

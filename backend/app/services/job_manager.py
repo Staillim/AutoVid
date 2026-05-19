@@ -228,9 +228,11 @@ class RenderJobManager:
 
     async def _mark_completed(self, job_id: str, result: object) -> None:
         render_result = None
+        cache_hit = False
         if isinstance(result, RenderJobResult):
             render_result = result
-        self._emit(JobProgressEventType.JOB_COMPLETED, job_id)
+            cache_hit = result.cache_hit
+        self._emit(JobProgressEventType.JOB_COMPLETED, job_id, {"cache_hit": cache_hit})
         self._update_job_fields(job_id, {
             "status": RenderJobStatus.COMPLETED,
             "updated_at": self._utcnow(),

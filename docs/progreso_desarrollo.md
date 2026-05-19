@@ -1,5 +1,104 @@
 # Progreso de desarrollo
 
+## 2026-05-19 — Hito 2.5 completado
+
+### Hito
+
+Cache hit detection determinista — reutilización de renders ya válidos por fingerprint SHA-256.
+
+### Entregado
+
+- `backend/app/domain/models.py`:
+  - `RenderJobResult.cache_hit: bool = False` — nuevo campo, backward compatible (default False)
+- `backend/app/services/render_pipeline.py`:
+  - `_try_load_cached_render(prepared)` — helper privado que valida cache antes de ejecutar FFmpeg
+  - Validación en 5 pasos:
+    1. `render_manifest.json` existe
+    2. Manifest parsea correctamente (Pydantic)
+    3. `execution.ffmpeg_executed == True`
+    4. `execution.exit_code == 0`
+    5. `scene.mp4` existe y tamaño > 0
+  - `preview.png` es opcional — no bloquea cache hit (solo log debug)
+  - `execute_scene_render()` ahora verifica cache antes de ejecutar FFmpeg
+  - Logs claros: `[CACHE HIT]`, `[CACHE MISS]`, `[CACHE INVALID]` con fingerprint
+  - Retorna `RenderJobResult` con `cache_hit=True` cuando reutiliza cache
+- `backend/app/services/job_manager.py`:
+  - `_mark_completed()` ahora emite `{"cache_hit": true/false}` en evento WebSocket `job_completed`
+- `backend/tests/test_render_compiler.py`:
+  - `_write_fake_manifest_at_path()` — helper para escribir manifests en tests
+  - `test_cache_miss_no_manifest` — no existe manifest → FFmpeg se ejecuta
+  - `test_cache_hit_valid` — manifest válido + scene.mp4 → cache_hit=True
+  - `test_cache_invalid_corrupt_manifest` — manifest corrupto → rerenderizar
+  - `test_cache_invalid_missing_scene_mp4` — scene.mp4 faltante → rerenderizar
+  - `test_cache_invalid_previous_failed` — exit_code != 0 → rerenderizar
+  - `test_cache_hit_propagates_to_result` — cache_hit=True se propaga al resultado
+- `backend/tests/test_progress_websocket.py`:
+  - `test_job_completed_emits_cache_hit_false` — WebSocket emite cache_hit=False
+  - `test_job_completed_emits_cache_hit_true` — WebSocket emite cache_hit=True
+- suite completa: **82/82 tests pasan** (74 anteriores + 8 nuevos)
+
+### Verificación realizada
+
+- `python -m pytest tests/ -v` → 82 passed, 0 failed
+- Cero regresiones en tests existentes
+
+### Flujo técnico actualizado
+
+```
+execute_scene_render(request, progress_callback)
+    ↓
+prepare_scene_render(request)  → compile → fingerprint → plan → manifest write
+    ↓
+_try_load_cached_render(prepared)
+    ↓
+    ├─ manifest missing?       → [CACHE MISS]    → execute FFmpeg
+    ├─ manifest corrupt?       → [CACHE INVALID] → execute FFmpeg
+    ├─ ffmpeg_executed=False?  → [CACHE INVALID] → execute FFmpeg
+    ├─ exit_code!=0?           → [CACHE INVALID] → execute FFmpeg
+    ├─ scene.mp4 missing?      → [CACHE INVALID] → execute FFmpeg
+    └─ ALL VALID               → [CACHE HIT]     → return cached (cache_hit=True)
+```
+
+### Logs de ejemplo
+
+```
+[CACHE MISS] fingerprint=abc123...
+[CACHE HIT] fingerprint=abc123...
+[CACHE INVALID] missing scene.mp4 for fingerprint=abc123...
+[CACHE INVALID] manifest parse error for fingerprint=abc123...
+[CACHE INVALID] previous render failed (exit_code=1) for fingerprint=abc123...
+```
+
+### WebSocket payload (job_completed con cache hit)
+
+```json
+{
+  "schema_version": "1.0.0",
+  "event_type": "job_completed",
+  "job_id": "uuid",
+  "timestamp": "2026-05-19T...",
+  "data": {
+    "cache_hit": true
+  }
+}
+```
+
+### Decisiones aplicadas
+
+- Cache logic vive exclusivamente en `render_pipeline.py` (no en jobs, no en executor)
+- `_try_load_cached_render()` es helper privado — no expuesto como API pública
+- `cache_hit` es campo nuevo con default `False` → backward compatible total
+- No se usan timestamps ni mtime como criterio — solo fingerprint determinista
+- `preview.png` faltante no invalida cache — es derivado, no esencial
+- Helper de test `_write_fake_manifest_at_path()` escribe en ruta exacta del plan
+
+### Lo siguiente
+
+1. Export final multi-escena con concatenación FFmpeg
+2. Frontend JobPanel con progreso WebSocket + cache hit indicator
+
+---
+
 ## 2026-05-19 — Hito 2.4 completado
 
 ### Hito

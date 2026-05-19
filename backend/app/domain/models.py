@@ -389,6 +389,7 @@ class RenderJobResult(BaseModel):
     ffmpeg_command: list[str]
     preview_command: list[str]
     execution: RenderExecutionDetails | None = None
+    cache_hit: bool = False
 
 
 class RenderExecutionDetails(BaseModel):

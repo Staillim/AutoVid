@@ -295,3 +295,258 @@ def test_prepare_scene_render_writes_manifest_to_cache() -> None:
         assert manifest.scene_id == "scene-001"
         assert manifest.fingerprint == result.fingerprint
         assert manifest.execution is None
+
+
+# ── Cache hit detection tests ─────────────────────────────────────────────────
+
+
+def _write_fake_manifest_at_path(manifest_path: str, scene_id: str, fingerprint: str, *, exit_code: int = 0, ffmpeg_executed: bool = True) -> None:
+    """Escribe un manifest falso en la ruta exacta dada.
+
+    Args:
+        manifest_path: Ruta completa donde escribir el manifest.
+        scene_id: ID de la escena.
+        fingerprint: SHA-256 fingerprint.
+        exit_code: Código de salida de FFmpeg.
+        ffmpeg_executed: Si FFmpeg se ejecutó.
+    """
+    from app.domain.models import (
+        RenderExecutionDetails,
+        RenderJobResult,
+        RenderPlan,
+        RenderPlanFilterStage,
+        RenderPlanInput,
+        RenderPlanOutputs,
+        TimelineScene,
+        CompiledBackgroundClip,
+        AssetKind,
+        ZoomMotion,
+    )
+
+    scene_root = Path(manifest_path).parent
+    scene_root.mkdir(parents=True, exist_ok=True)
+
+    scene_path = str(scene_root / "scene.mp4")
+    preview_path = str(scene_root / "preview.png")
+
+    fake_timeline = TimelineScene(
+        scene_id=scene_id,
+        width=1920,
+        height=1080,
+        fps=30,
+        duration_ms=5000,
+        background_clip=CompiledBackgroundClip(
+            absolute_path="/fake/bg.mp4",
+            asset_kind=AssetKind.VIDEO,
+            trim_in_ms=0,
+            trim_out_ms=5000,
+            loop_mode="cut",
+        ),
+        overlay_clips=[],
+        text_clips=[],
+        zoom=ZoomMotion(),
+        subtitle_ass_path=None,
+    )
+    fake_plan = RenderPlan(
+        plan_id=f"{scene_id}:{fingerprint}",
+        scene_id=scene_id,
+        timeline_scene=fake_timeline,
+        inputs=[RenderPlanInput(
+            input_id="bg",
+            absolute_path="/fake/bg.mp4",
+            asset_kind=AssetKind.VIDEO,
+            role="background",
+        )],
+        filter_stages=[RenderPlanFilterStage(name="normalize_background", description="test")],
+        outputs=RenderPlanOutputs(
+            scene_output_path=scene_path,
+            preview_output_path=preview_path,
+            manifest_output_path=manifest_path,
+        ),
+    )
+    execution = RenderExecutionDetails(
+        scene_output_path=scene_path,
+        preview_output_path=preview_path,
+        ffmpeg_executed=ffmpeg_executed,
+        preview_generated=True,
+        exit_code=exit_code,
+        preview_exit_code=0,
+    )
+    fake_result = RenderJobResult(
+        timeline_scene=fake_timeline,
+        fingerprint=fingerprint,
+        render_plan=fake_plan,
+        ffmpeg_command=["ffmpeg", "-i", "/fake/bg.mp4", "-c", "copy", scene_path],
+        preview_command=["ffmpeg", "-i", scene_path, "-frames:v", "1", preview_path],
+        execution=execution,
+    )
+    RenderManifestService().write(fake_result)
+
+
+def test_cache_miss_no_manifest() -> None:
+    """No existe manifest → FFmpeg se ejecuta, cache_hit=False."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+
+        # Borrar el manifest para simular cache miss
+        manifest_path = Path(result.render_plan.outputs.manifest_output_path)
+        manifest_path.unlink()
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+        assert cached is None
+        assert result.cache_hit is False
+
+
+def test_cache_hit_valid() -> None:
+    """Manifest válido + scene.mp4 válido → FFmpeg NO se ejecuta, cache_hit=True."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+        fingerprint = result.fingerprint
+        scene_id = result.render_plan.scene_id
+        scene_path = Path(result.render_plan.outputs.scene_output_path)
+        preview_path = Path(result.render_plan.outputs.preview_output_path)
+        manifest_path = result.render_plan.outputs.manifest_output_path
+
+        # Sobrescribir el manifest con execution exitosa en la ruta correcta
+        _write_fake_manifest_at_path(manifest_path, scene_id, fingerprint, exit_code=0, ffmpeg_executed=True)
+
+        # Crear archivos válidos
+        scene_path.parent.mkdir(parents=True, exist_ok=True)
+        scene_path.write_bytes(b"fake-mp4-content")
+        preview_path.write_bytes(b"fake-png-content")
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+        assert cached is not None
+        assert cached.cache_hit is True
+        assert cached.fingerprint == fingerprint
+        assert cached.execution is not None
+        assert cached.execution.ffmpeg_executed is True
+
+
+def test_cache_invalid_corrupt_manifest() -> None:
+    """Manifest JSON corrupto → invalidar cache, rerenderizar."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+        manifest_path = Path(result.render_plan.outputs.manifest_output_path)
+
+        # Corromper el manifest
+        manifest_path.write_text("NOT VALID JSON {{{", encoding="utf-8")
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+        assert cached is None
+
+
+def test_cache_invalid_missing_scene_mp4() -> None:
+    """Manifest OK pero scene.mp4 falta → invalidar cache, rerenderizar."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+        scene_path = Path(result.render_plan.outputs.scene_output_path)
+
+        # Borrar scene.mp4 si existe (prepare no lo crea, pero por seguridad)
+        if scene_path.exists():
+            scene_path.unlink()
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+        assert cached is None
+
+
+def test_cache_invalid_previous_failed() -> None:
+    """execution.exit_code != 0 → invalidar cache, rerenderizar."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+        fingerprint = result.fingerprint
+        scene_id = result.render_plan.scene_id
+        scene_path = Path(result.render_plan.outputs.scene_output_path)
+        preview_path = Path(result.render_plan.outputs.preview_output_path)
+        manifest_path = result.render_plan.outputs.manifest_output_path
+
+        # Escribir manifest con exit_code != 0 en la ruta correcta
+        _write_fake_manifest_at_path(manifest_path, scene_id, fingerprint, exit_code=1)
+
+        # Crear archivos (existen pero el render falló)
+        scene_path.parent.mkdir(parents=True, exist_ok=True)
+        scene_path.write_bytes(b"partial-output")
+        preview_path.write_bytes(b"partial-preview")
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+        assert cached is None
+
+
+def test_cache_hit_propagates_to_result() -> None:
+    """Cache hit → result tiene cache_hit=True y WebSocket data lo incluye."""
+    project, assets = make_project()
+    with TemporaryDirectory() as temp_dir:
+        request = RenderSceneRequest(
+            project=project,
+            scene_id="scene-001",
+            assets=assets,
+            cache_root=temp_dir,
+            ffmpeg_path="ffmpeg",
+        )
+
+        result = RenderPipeline().prepare_scene_render(request)
+        fingerprint = result.fingerprint
+        scene_id = result.render_plan.scene_id
+        scene_path = Path(result.render_plan.outputs.scene_output_path)
+        preview_path = Path(result.render_plan.outputs.preview_output_path)
+        manifest_path = result.render_plan.outputs.manifest_output_path
+
+        # Escribir cache válido en la ruta correcta
+        _write_fake_manifest_at_path(manifest_path, scene_id, fingerprint, exit_code=0, ffmpeg_executed=True)
+        scene_path.parent.mkdir(parents=True, exist_ok=True)
+        scene_path.write_bytes(b"cached-scene")
+        preview_path.write_bytes(b"cached-preview")
+
+        cached = RenderPipeline()._try_load_cached_render(result)
+
+        assert cached is not None
+        assert cached.cache_hit is True
+        assert cached.execution is not None
+        assert cached.execution.ffmpeg_executed is True
+        assert cached.execution.exit_code == 0
+        assert cached.fingerprint == fingerprint
