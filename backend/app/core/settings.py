@@ -12,6 +12,7 @@ class AppSettings(BaseModel):
     default_cache_root: str = Field(default_factory=lambda: str(Path.cwd() / ".cache"))
     default_logs_root: str = Field(default_factory=lambda: str(Path.cwd() / ".logs"))
     library_db_path: str = Field(default_factory=lambda: str(Path.cwd() / "library.db"))
+    jobs_db_path: str = Field(default_factory=lambda: str(Path.cwd() / "jobs.db"))
     ffmpeg_path: str = "ffmpeg"
     ffprobe_path: str = "ffprobe"
     font_root: str | None = None
@@ -29,6 +30,9 @@ class AppSettings(BaseModel):
         library_db_path = Path(
             os.getenv("NODEAV_LIBRARY_DB", str(runtime_root / "library.db"))
         )
+        jobs_db_path = Path(
+            os.getenv("NODEAV_JOBS_DB", str(runtime_root / "jobs.db"))
+        )
         ffmpeg_path = os.getenv("NODEAV_FFMPEG_PATH", "ffmpeg")
         ffprobe_path = os.getenv("NODEAV_FFPROBE_PATH", "ffprobe")
         font_root = os.getenv("NODEAV_FONT_ROOT")
@@ -38,6 +42,7 @@ class AppSettings(BaseModel):
             default_cache_root=str(default_cache_root),
             default_logs_root=str(default_logs_root),
             library_db_path=str(library_db_path),
+            jobs_db_path=str(jobs_db_path),
             ffmpeg_path=ffmpeg_path,
             ffprobe_path=ffprobe_path,
             font_root=font_root,

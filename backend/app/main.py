@@ -16,6 +16,7 @@ async def lifespan(_: FastAPI):
         yield
     finally:
         await render_job_manager.stop()
+        render_job_manager.dispose()
 
 
 def create_app() -> FastAPI:

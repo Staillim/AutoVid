@@ -41,13 +41,11 @@ Todavia **no se considera un producto usable de punta a punta**, porque falta va
 ### Pendiente
 
 - exportar tipos TypeScript desde JSON Schema (con json-schema-to-typescript)
-- persistencia de jobs (actualmente solo en memoria)
 - eventos de progreso en tiempo real (WebSocket)
 - frontend/editor visual
 - pipeline IA narrativo
 - export final multi-escena validado
-- `ProjectService` para abrir/guardar `.avproj` desde disco
-- `AssetLibrary` con SQLite para indice de assets
+- cache hit detection en `RenderPipeline.execute_scene_render`
 
 ## Arquitectura implementada hasta ahora
 

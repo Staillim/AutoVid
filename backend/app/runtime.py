@@ -8,6 +8,7 @@ render_pipeline = RenderPipeline(settings=app_settings)
 
 render_job_manager = RenderJobManager(
     processor=render_pipeline.execute_scene_render,
+    db_path=app_settings.jobs_db_path,
 )
 
 asset_library = AssetLibrary(

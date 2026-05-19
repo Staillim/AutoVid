@@ -1,5 +1,65 @@
 # Progreso de desarrollo
 
+## 2026-05-19 — Hito 2.3 completado
+
+### Hito
+
+Persistencia de jobs en SQLite — los jobs sobreviven reinicios del backend.
+
+### Entregado
+
+- `backend/app/services/job_manager.py`:
+  - Refactor completo: reemplaza `dict` in-memory por tabla SQLite `jobs`
+  - ORM `JobRow` con SQLAlchemy 2.x (mismo patrón que `AssetRow`)
+  - `dispose()` para liberar conexiones (Windows-safe)
+  - `_persist_job()` — escribe/actualiza job en SQLite con `merge()`
+  - `_get_job()` — lee job por ID desde DB
+  - `_list_jobs()` — lista todos ordenados por `created_at DESC`
+  - `_update_job_fields()` — actualiza campos de estado (running/completed/failed)
+  - `result_json` — serialización de `RenderJobResult` como JSON en SQLite
+  - Transiciones de estado persistidas: `queued → running → completed/failed`
+- `backend/app/core/settings.py`:
+  - Nuevo campo `jobs_db_path` con default `cwd / "jobs.db"`
+  - Env var `NODEAV_JOBS_DB` para configuración custom
+- `backend/app/runtime.py`:
+  - `RenderJobManager` ahora recibe `db_path=app_settings.jobs_db_path`
+- `backend/app/main.py`:
+  - `lifespan()` llama `render_job_manager.dispose()` en shutdown
+- `backend/tests/test_job_manager.py` — 12 tests:
+  - `test_submit_persists_job` — persiste con status QUEUED
+  - `test_get_returns_persisted_job` — lectura desde DB
+  - `test_get_returns_none_for_unknown` — job inexistente
+  - `test_list_returns_all_jobs_sorted` — orden descendente
+  - `test_job_survives_manager_restart` — supervivencia a restart
+  - `test_completed_job_persists_result` — resultado serializado
+  - `test_failed_job_persists_error` — mensaje de error persistido
+  - `test_worker_loop_persists_transitions` — queued→running→completed
+  - `test_worker_loop_persists_failure` — fallo del processor
+  - `test_job_row_to_record_roundtrip` — serialización/deserialización
+  - `test_list_empty_db` — lista vacía
+  - `test_db_file_created` — archivo DB se crea al instanciar
+- suite completa: **55/55 tests pasan** (43 anteriores + 12 nuevos)
+
+### Verificación realizada
+
+- `python -m pytest tests/ -v` → 55 passed, 0 failed
+- Cero regresiones en tests existentes
+
+### Decisiones aplicadas
+
+- DB separada (`jobs.db`) de `library.db` para evitar acoplamiento
+- Mismo patrón ORM que AssetLibrary: `DeclarativeBase`, sesiones síncronas, `dispose()`
+- `RenderJobRecord` no cambió — compatibilidad total con contratos existentes
+- `result` se serializa como JSON via `model_dump_json()` de Pydantic v2
+- Fixture de tests usa `shutil.rmtree(ignore_errors=True)` + `gc.collect()` para Windows
+
+### Lo siguiente
+
+1. Hito 2.4 — Eventos de progreso WebSocket
+2. Cache hit detection en `RenderPipeline.execute_scene_render`
+
+---
+
 ## 2026-05-19 — Hito 2.2 completado
 
 ### Hito
