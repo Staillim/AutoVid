@@ -6,7 +6,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.jobs import router as jobs_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.runtime import router as runtime_router
-from app.runtime import render_job_manager
+from app.runtime import render_job_manager, progress_broadcaster
 
 
 @asynccontextmanager
@@ -17,6 +17,7 @@ async def lifespan(_: FastAPI):
     finally:
         await render_job_manager.stop()
         render_job_manager.dispose()
+        progress_broadcaster.close_all()
 
 
 def create_app() -> FastAPI:

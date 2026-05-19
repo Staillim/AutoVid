@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Callable
+
 from app.core.settings import AppSettings
 from app.domain.models import RenderJobResult, RenderSceneRequest
 from app.services.cache_fingerprint import build_scene_fingerprint
@@ -53,10 +55,16 @@ class RenderPipeline:
         RenderManifestService().write(result)
         return result
 
-    def execute_scene_render(self, request: RenderSceneRequest) -> RenderJobResult:
+    def execute_scene_render(
+        self,
+        request: RenderSceneRequest,
+        *,
+        progress_callback: Callable[[dict], None] | None = None,
+    ) -> RenderJobResult:
         prepared = self.prepare_scene_render(request)
         execution = FfmpegExecutor(ffmpeg_path=prepared.ffmpeg_command[0]).execute(
-            prepared.render_plan
+            prepared.render_plan,
+            progress_callback=progress_callback,
         )
         executed = prepared.model_copy(update={"execution": execution})
         RenderManifestService().write(executed)

@@ -1,5 +1,101 @@
 # Progreso de desarrollo
 
+## 2026-05-19 — Hito 2.4 completado
+
+### Hito
+
+WebSocket de progreso en tiempo real para jobs de render.
+
+### Entregado
+
+- `backend/app/domain/models.py`:
+  - `JobProgressEventType` — enum con 5 tipos: `job_queued`, `job_started`, `ffmpeg_progress`, `job_completed`, `job_failed`
+  - `FfmpegProgressData` — modelo Pydantic para datos de progreso FFmpeg
+  - `JobProgressEvent` — evento estructurado y versionable con `schema_version`, `event_type`, `job_id`, `timestamp`, `data`
+- `backend/app/services/progress_broadcaster.py` (nuevo):
+  - `ProgressBroadcaster` — event bus pub/sub para eventos de progreso
+  - `subscribe(job_id)` → `asyncio.Queue` con maxsize 64 (backpressure)
+  - `unsubscribe(job_id, queue)` — remueve listener, idempotente
+  - `emit(event_type, job_id, data)` — thread-safe, cruza thread boundary con `run_coroutine_threadsafe`
+  - `close(job_id)` — envía sentinel (None) a todos los listeners
+  - `close_all()` — cierra todos los listeners activos
+  - Backpressure: si queue está llena, descarta evento más antiguo
+- `backend/app/services/ffmpeg_executor.py`:
+  - `execute()` ahora acepta `progress_callback: Callable[[dict], None] | None`
+  - Usa `subprocess.Popen` + `-progress pipe:1` en vez de `subprocess.run`
+  - Parsea output estructurado de FFmpeg (key=value) línea por línea
+  - Corrige bug: `out_time_ms` de FFmpeg está en microsegundos, se convierte a ms
+  - Emite progreso: `frame`, `fps`, `time_ms`, `speed`, `percent`
+  - Sin callback: consume stdout para evitar bloqueo de pipe
+- `backend/app/services/render_pipeline.py`:
+  - `execute_scene_render()` acepta `progress_callback` kwarg
+  - Inyecta callback al `FfmpegExecutor.execute()`
+- `backend/app/services/job_manager.py`:
+  - Acepta `broadcaster: ProgressBroadcaster | None`
+  - `_make_progress_callback()` crea callback que emite al broadcaster
+  - `_wrapped_processor()` detecta si processor soporta `progress_callback` via `inspect.signature`
+  - Emite `job_queued` en `submit()`, `job_started` en `_mark_running()`, `job_completed`/`job_failed` en transiciones finales
+  - `dispose()` cierra broadcaster
+- `backend/app/api/routes/jobs.py`:
+  - `WebSocket /api/jobs/ws/{job_id}` — endpoint para recibir eventos de progreso
+  - Se suscribe al broadcaster, envía eventos al cliente, cleanup en disconnect
+- `backend/app/runtime.py`:
+  - `progress_broadcaster` singleton global
+  - Inyectado en `render_job_manager`
+- `backend/app/main.py`:
+  - `lifespan()` cierra `progress_broadcaster` en shutdown
+- `backend/tests/test_progress_websocket.py` (nuevo, 19 tests):
+  - Broadcaster: subscribe, emit, multi-subscriber, isolation, unsubscribe, close, backpressure, emit_raw
+  - Integration: submit emits queued, worker emits started/completed, worker emits failed
+  - FFmpeg: progress parsing, callback called, percent capped at 100, missing fields handled
+  - WebSocket: connection + events, disconnect cleanup
+- suite completa: **74/74 tests pasan** (55 anteriores + 19 nuevos)
+
+### Verificación realizada
+
+- `python -m pytest tests/ -v` → 74 passed, 0 failed
+- Cero regresiones en tests existentes
+
+### Contrato de eventos WebSocket
+
+Cada mensaje es JSON con estructura:
+```json
+{
+  "schema_version": "1.0.0",
+  "event_type": "job_queued|job_started|ffmpeg_progress|job_completed|job_failed",
+  "job_id": "uuid",
+  "timestamp": "2026-05-19T00:00:00+00:00",
+  "data": { ... }
+}
+```
+
+Para `ffmpeg_progress`, `data` contiene:
+```json
+{
+  "frame": 123,
+  "fps": 30.0,
+  "time_ms": 4100,
+  "speed": 1.23,
+  "percent": 82.0
+}
+```
+
+### Decisiones aplicadas
+
+- FFmpeg usa `-progress pipe:1` (output estructurado) en vez de parsear stderr
+- `out_time_ms` de FFmpeg está en microsegundos — se convierte a ms para el frontend
+- Broadcaster es thread-safe: `run_coroutine_threadsafe` para cruzar thread boundary
+- Backpressure con queue maxsize 64 — descarta evento más antiguo si está lleno
+- Sentinel es `None` — consistente con WebSocket endpoint
+- Processor wrapper usa `inspect.signature` para detectar soporte de `progress_callback`
+
+### Lo siguiente
+
+1. Cache hit detection en `RenderPipeline.execute_scene_render`
+2. Export final multi-escena con concatenación FFmpeg
+
+---
+
 ## 2026-05-19 — Hito 2.3 completado
 
 ### Hito

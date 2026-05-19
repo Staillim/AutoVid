@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -449,3 +449,35 @@ class RuntimeHealthReport(BaseModel):
     ffmpeg: RuntimeBinaryCheck
     ffprobe: RuntimeBinaryCheck
     issues: list[str] = Field(default_factory=list)
+
+
+# ── WebSocket progress events ────────────────────────────────────────────────
+
+class JobProgressEventType(str, Enum):
+    JOB_QUEUED = "job_queued"
+    JOB_STARTED = "job_started"
+    FFMPEG_PROGRESS = "ffmpeg_progress"
+    JOB_COMPLETED = "job_completed"
+    JOB_FAILED = "job_failed"
+
+
+class FfmpegProgressData(BaseModel):
+    frame: int = 0
+    fps: float = 0.0
+    time_ms: int = 0
+    speed: float = 0.0
+    percent: float = 0.0
+
+
+class JobProgressEvent(BaseModel):
+    """Evento estructurado y versionable de progreso de job.
+
+    Emitido por el ProgressBroadcaster a través de WebSocket.
+    No contiene logs crudos de FFmpeg; solo datos normalizados.
+    """
+
+    schema_version: str = "1.0.0"
+    event_type: JobProgressEventType
+    job_id: str
+    timestamp: str
+    data: dict[str, Any] = Field(default_factory=dict)

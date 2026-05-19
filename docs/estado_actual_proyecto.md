@@ -41,7 +41,6 @@ Todavia **no se considera un producto usable de punta a punta**, porque falta va
 ### Pendiente
 
 - exportar tipos TypeScript desde JSON Schema (con json-schema-to-typescript)
-- eventos de progreso en tiempo real (WebSocket)
 - frontend/editor visual
 - pipeline IA narrativo
 - export final multi-escena validado

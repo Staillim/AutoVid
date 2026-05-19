@@ -11,7 +11,14 @@ from typing import Callable
 from sqlalchemy import String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, Session
 
-from app.domain.models import RenderJobRecord, RenderJobStatus, RenderJobResult, RenderSceneRequest
+from app.domain.models import (
+    JobProgressEventType,
+    RenderJobRecord,
+    RenderJobStatus,
+    RenderJobResult,
+    RenderSceneRequest,
+)
+from app.services.progress_broadcaster import ProgressBroadcaster
 
 
 # ── ORM ───────────────────────────────────────────────────────────────────────
@@ -65,11 +72,12 @@ class _QueuedJob:
 
 
 class RenderJobManager:
-    """Cola local de jobs con persistencia en SQLite.
+    """Cola local de jobs con persistencia en SQLite y broadcast de progreso.
 
     Los jobs se almacenan en una tabla SQLite para sobrevivir reinicios
     del backend. El worker loop sigue usando asyncio.Queue para la
-    ejecución asíncrona, pero cada transición de estado se persiste.
+    ejecución asíncrona, pero cada transición de estado se persiste
+    y se emite como evento de progreso.
     """
 
     def __init__(
@@ -77,11 +85,13 @@ class RenderJobManager:
         *,
         processor: Callable[[RenderSceneRequest], object],
         db_path: str | Path,
+        broadcaster: ProgressBroadcaster | None = None,
     ) -> None:
         self._processor = processor
         self._queue: asyncio.Queue[_QueuedJob] = asyncio.Queue()
         self._lock = asyncio.Lock()
         self._worker_task: asyncio.Task | None = None
+        self._broadcaster = broadcaster
 
         self._db_path = Path(db_path)
         self._engine = create_engine(f"sqlite:///{self._db_path}", echo=False)
@@ -90,6 +100,8 @@ class RenderJobManager:
     def dispose(self) -> None:
         """Libera todas las conexiones del engine (necesario en Windows)."""
         self._engine.dispose()
+        if self._broadcaster is not None:
+            self._broadcaster.close_all()
 
     async def start(self) -> None:
         if self._worker_task is None or self._worker_task.done():
@@ -115,6 +127,7 @@ class RenderJobManager:
         )
         self._persist_job(job)
         await self._queue.put(_QueuedJob(job_id=job.job_id, request=request))
+        self._emit(JobProgressEventType.JOB_QUEUED, job.job_id)
         return job
 
     async def get(self, job_id: str) -> RenderJobRecord | None:
@@ -127,14 +140,50 @@ class RenderJobManager:
         while True:
             queued = await self._queue.get()
             await self._mark_running(queued.job_id)
+
+            # Construir callback de progreso que emite al broadcaster
+            progress_cb = self._make_progress_callback(queued.job_id)
+
             try:
-                result = await asyncio.to_thread(self._processor, queued.request)
+                result = await asyncio.to_thread(
+                    self._wrapped_processor, queued.request, progress_cb,
+                )
             except Exception as exc:  # noqa: BLE001
                 await self._mark_failed(queued.job_id, str(exc))
             else:
                 await self._mark_completed(queued.job_id, result)
             finally:
                 self._queue.task_done()
+
+    def _wrapped_processor(
+        self,
+        request: RenderSceneRequest,
+        progress_callback: Callable[[dict], None] | None,
+    ) -> object:
+        """Wrapper que inyecta el progress_callback al processor si soporta kwargs."""
+        import inspect
+        sig = inspect.signature(self._processor)
+        if "progress_callback" in sig.parameters:
+            return self._processor(request, progress_callback=progress_callback)
+        # Fallback: processor no soporta progress_callback
+        return self._processor(request)
+
+    def _make_progress_callback(self, job_id: str) -> Callable[[dict], None] | None:
+        if self._broadcaster is None:
+            return None
+
+        def callback(data: dict) -> None:
+            self._broadcaster.emit(
+                JobProgressEventType.FFMPEG_PROGRESS,
+                job_id,
+                data,
+            )
+
+        return callback
+
+    def _emit(self, event_type: JobProgressEventType, job_id: str, data: dict | None = None) -> None:
+        if self._broadcaster is not None:
+            self._broadcaster.emit(event_type, job_id, data)
 
     # ── persistencia ──────────────────────────────────────────────────────
 
@@ -171,6 +220,7 @@ class RenderJobManager:
             return [row.to_record() for row in rows]
 
     async def _mark_running(self, job_id: str) -> None:
+        self._emit(JobProgressEventType.JOB_STARTED, job_id)
         self._update_job_fields(job_id, {
             "status": RenderJobStatus.RUNNING,
             "updated_at": self._utcnow(),
@@ -180,6 +230,7 @@ class RenderJobManager:
         render_result = None
         if isinstance(result, RenderJobResult):
             render_result = result
+        self._emit(JobProgressEventType.JOB_COMPLETED, job_id)
         self._update_job_fields(job_id, {
             "status": RenderJobStatus.COMPLETED,
             "updated_at": self._utcnow(),
@@ -188,6 +239,7 @@ class RenderJobManager:
         })
 
     async def _mark_failed(self, job_id: str, error_message: str) -> None:
+        self._emit(JobProgressEventType.JOB_FAILED, job_id, {"error": error_message})
         self._update_job_fields(job_id, {
             "status": RenderJobStatus.FAILED,
             "updated_at": self._utcnow(),
