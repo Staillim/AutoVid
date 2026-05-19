@@ -1,0 +1,397 @@
+{
+  "$defs": {
+    "AssetKind": {
+      "enum": [
+        "video",
+        "image",
+        "audio"
+      ],
+      "title": "AssetKind",
+      "type": "string"
+    },
+    "CompiledBackgroundClip": {
+      "properties": {
+        "absolute_path": {
+          "title": "Absolute Path",
+          "type": "string"
+        },
+        "asset_kind": {
+          "$ref": "#/$defs/AssetKind"
+        },
+        "trim_in_ms": {
+          "title": "Trim In Ms",
+          "type": "integer"
+        },
+        "trim_out_ms": {
+          "title": "Trim Out Ms",
+          "type": "integer"
+        },
+        "loop_mode": {
+          "enum": [
+            "loop",
+            "freeze_last_frame",
+            "cut"
+          ],
+          "title": "Loop Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "absolute_path",
+        "asset_kind",
+        "trim_in_ms",
+        "trim_out_ms",
+        "loop_mode"
+      ],
+      "title": "CompiledBackgroundClip",
+      "type": "object"
+    },
+    "CompiledOverlayClip": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "absolute_path": {
+          "title": "Absolute Path",
+          "type": "string"
+        },
+        "asset_kind": {
+          "$ref": "#/$defs/AssetKind"
+        },
+        "start_ms": {
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "x_px": {
+          "title": "X Px",
+          "type": "integer"
+        },
+        "y_px": {
+          "title": "Y Px",
+          "type": "integer"
+        },
+        "width_px": {
+          "title": "Width Px",
+          "type": "integer"
+        },
+        "height_px": {
+          "title": "Height Px",
+          "type": "integer"
+        },
+        "opacity": {
+          "title": "Opacity",
+          "type": "number"
+        },
+        "enter_anim": {
+          "enum": [
+            "none",
+            "fade",
+            "slide_up",
+            "pop"
+          ],
+          "title": "Enter Anim",
+          "type": "string"
+        },
+        "exit_anim": {
+          "enum": [
+            "none",
+            "fade"
+          ],
+          "title": "Exit Anim",
+          "type": "string"
+        },
+        "z_index": {
+          "title": "Z Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "absolute_path",
+        "asset_kind",
+        "start_ms",
+        "end_ms",
+        "x_px",
+        "y_px",
+        "width_px",
+        "height_px",
+        "opacity",
+        "enter_anim",
+        "exit_anim",
+        "z_index"
+      ],
+      "title": "CompiledOverlayClip",
+      "type": "object"
+    },
+    "CompiledTextClip": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "start_ms": {
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "x_px": {
+          "title": "X Px",
+          "type": "integer"
+        },
+        "y_px": {
+          "title": "Y Px",
+          "type": "integer"
+        },
+        "style": {
+          "$ref": "#/$defs/CompiledTextStyle"
+        },
+        "anim": {
+          "enum": [
+            "none",
+            "fade",
+            "pop"
+          ],
+          "title": "Anim",
+          "type": "string"
+        },
+        "z_index": {
+          "title": "Z Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "start_ms",
+        "end_ms",
+        "x_px",
+        "y_px",
+        "style",
+        "anim",
+        "z_index"
+      ],
+      "title": "CompiledTextClip",
+      "type": "object"
+    },
+    "CompiledTextStyle": {
+      "properties": {
+        "font_file": {
+          "title": "Font File",
+          "type": "string"
+        },
+        "font_size_px": {
+          "title": "Font Size Px",
+          "type": "integer"
+        },
+        "color_rgba": {
+          "title": "Color Rgba",
+          "type": "string"
+        },
+        "stroke_rgba": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Stroke Rgba"
+        },
+        "stroke_width_px": {
+          "title": "Stroke Width Px",
+          "type": "integer"
+        },
+        "bg_rgba": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Bg Rgba"
+        },
+        "padding_px": {
+          "title": "Padding Px",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "font_file",
+        "font_size_px",
+        "color_rgba",
+        "stroke_rgba",
+        "stroke_width_px",
+        "bg_rgba",
+        "padding_px"
+      ],
+      "title": "CompiledTextStyle",
+      "type": "object"
+    },
+    "SubtitleCue": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "exclusiveMinimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "start_ms",
+        "end_ms",
+        "text"
+      ],
+      "title": "SubtitleCue",
+      "type": "object"
+    },
+    "ZoomMotion": {
+      "properties": {
+        "mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "zoom_in",
+            "zoom_out"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "start_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "start_scale": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Start Scale",
+          "type": "number"
+        },
+        "end_scale": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "End Scale",
+          "type": "number"
+        },
+        "anchor": {
+          "const": "center",
+          "default": "center",
+          "title": "Anchor",
+          "type": "string"
+        }
+      },
+      "title": "ZoomMotion",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "scene_id": {
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "width": {
+      "title": "Width",
+      "type": "integer"
+    },
+    "height": {
+      "title": "Height",
+      "type": "integer"
+    },
+    "fps": {
+      "title": "Fps",
+      "type": "integer"
+    },
+    "duration_ms": {
+      "title": "Duration Ms",
+      "type": "integer"
+    },
+    "background_clip": {
+      "$ref": "#/$defs/CompiledBackgroundClip"
+    },
+    "overlay_clips": {
+      "items": {
+        "$ref": "#/$defs/CompiledOverlayClip"
+      },
+      "title": "Overlay Clips",
+      "type": "array"
+    },
+    "text_clips": {
+      "items": {
+        "$ref": "#/$defs/CompiledTextClip"
+      },
+      "title": "Text Clips",
+      "type": "array"
+    },
+    "zoom": {
+      "$ref": "#/$defs/ZoomMotion"
+    },
+    "subtitle_ass_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Subtitle Ass Path"
+    },
+    "subtitle_cues": {
+      "items": {
+        "$ref": "#/$defs/SubtitleCue"
+      },
+      "title": "Subtitle Cues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "scene_id",
+    "width",
+    "height",
+    "fps",
+    "duration_ms",
+    "background_clip",
+    "overlay_clips",
+    "text_clips",
+    "zoom"
+  ],
+  "title": "TimelineScene",
+  "type": "object"
+}

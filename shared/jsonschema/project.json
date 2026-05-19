@@ -1,0 +1,799 @@
+{
+  "$defs": {
+    "AnalysisMetadata": {
+      "properties": {
+        "source_type": {
+          "default": "manual",
+          "enum": [
+            "script",
+            "audio",
+            "manual"
+          ],
+          "title": "Source Type",
+          "type": "string"
+        },
+        "source_asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Asset Id"
+        },
+        "source_text_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Text Sha256"
+        },
+        "last_analysis_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Analysis Id"
+        },
+        "last_analysis_provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Analysis Provider"
+        },
+        "last_analysis_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Analysis Model"
+        }
+      },
+      "title": "AnalysisMetadata",
+      "type": "object"
+    },
+    "AssetKind": {
+      "enum": [
+        "video",
+        "image",
+        "audio"
+      ],
+      "title": "AssetKind",
+      "type": "string"
+    },
+    "AssetRef": {
+      "properties": {
+        "asset_id": {
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/AssetKind"
+        }
+      },
+      "required": [
+        "asset_id",
+        "kind"
+      ],
+      "title": "AssetRef",
+      "type": "object"
+    },
+    "BackgroundConfig": {
+      "properties": {
+        "asset": {
+          "$ref": "#/$defs/AssetRef"
+        },
+        "trim_in_ms": {
+          "minimum": 0,
+          "title": "Trim In Ms",
+          "type": "integer"
+        },
+        "trim_out_ms": {
+          "exclusiveMinimum": 0,
+          "title": "Trim Out Ms",
+          "type": "integer"
+        },
+        "loop_mode": {
+          "default": "cut",
+          "enum": [
+            "loop",
+            "freeze_last_frame",
+            "cut"
+          ],
+          "title": "Loop Mode",
+          "type": "string"
+        },
+        "fit_mode": {
+          "const": "cover",
+          "default": "cover",
+          "title": "Fit Mode",
+          "type": "string"
+        },
+        "blur_background": {
+          "const": false,
+          "default": false,
+          "title": "Blur Background",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "asset",
+        "trim_in_ms",
+        "trim_out_ms"
+      ],
+      "title": "BackgroundConfig",
+      "type": "object"
+    },
+    "LibraryBinding": {
+      "properties": {
+        "library_id": {
+          "title": "Library Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "library_id"
+      ],
+      "title": "LibraryBinding",
+      "type": "object"
+    },
+    "NarrativeBlock": {
+      "properties": {
+        "source_start_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Start Ms"
+        },
+        "source_end_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source End Ms"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "transcript_excerpt": {
+          "default": "",
+          "title": "Transcript Excerpt",
+          "type": "string"
+        },
+        "entities": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Entities",
+          "type": "array"
+        },
+        "narrative_role": {
+          "$ref": "#/$defs/NarrativeRole"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "summary",
+        "narrative_role",
+        "confidence"
+      ],
+      "title": "NarrativeBlock",
+      "type": "object"
+    },
+    "NarrativeRole": {
+      "enum": [
+        "hook",
+        "setup",
+        "context",
+        "argument",
+        "evidence",
+        "transition",
+        "payoff",
+        "cta"
+      ],
+      "title": "NarrativeRole",
+      "type": "string"
+    },
+    "Overlay": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "asset": {
+          "$ref": "#/$defs/AssetRef"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "exclusiveMinimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "x_pct": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "X Pct",
+          "type": "number"
+        },
+        "y_pct": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Y Pct",
+          "type": "number"
+        },
+        "width_pct": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Width Pct",
+          "type": "number"
+        },
+        "height_pct": {
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "title": "Height Pct",
+          "type": "number"
+        },
+        "opacity": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Opacity",
+          "type": "number"
+        },
+        "enter_anim": {
+          "default": "none",
+          "enum": [
+            "none",
+            "fade",
+            "slide_up",
+            "pop"
+          ],
+          "title": "Enter Anim",
+          "type": "string"
+        },
+        "exit_anim": {
+          "default": "none",
+          "enum": [
+            "none",
+            "fade"
+          ],
+          "title": "Exit Anim",
+          "type": "string"
+        },
+        "z_index": {
+          "default": 0,
+          "title": "Z Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "asset",
+        "start_ms",
+        "end_ms",
+        "x_pct",
+        "y_pct",
+        "width_pct",
+        "height_pct",
+        "opacity"
+      ],
+      "title": "Overlay",
+      "type": "object"
+    },
+    "ProjectSettings": {
+      "properties": {
+        "width": {
+          "default": 1920,
+          "minimum": 16,
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "default": 1080,
+          "minimum": 16,
+          "title": "Height",
+          "type": "integer"
+        },
+        "fps": {
+          "default": 30,
+          "maximum": 120,
+          "minimum": 1,
+          "title": "Fps",
+          "type": "integer"
+        },
+        "video_codec": {
+          "const": "h264",
+          "default": "h264",
+          "title": "Video Codec",
+          "type": "string"
+        },
+        "audio_codec": {
+          "const": "aac",
+          "default": "aac",
+          "title": "Audio Codec",
+          "type": "string"
+        },
+        "master_audio_asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Master Audio Asset Id"
+        },
+        "subtitle_language": {
+          "default": "es",
+          "title": "Subtitle Language",
+          "type": "string"
+        },
+        "export_preset": {
+          "const": "youtube_1080p",
+          "default": "youtube_1080p",
+          "title": "Export Preset",
+          "type": "string"
+        }
+      },
+      "title": "ProjectSettings",
+      "type": "object"
+    },
+    "SceneNode": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "order": {
+          "minimum": 0,
+          "title": "Order",
+          "type": "integer"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "duration_ms": {
+          "exclusiveMinimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "narrative": {
+          "$ref": "#/$defs/NarrativeBlock"
+        },
+        "background": {
+          "$ref": "#/$defs/BackgroundConfig"
+        },
+        "overlays": {
+          "items": {
+            "$ref": "#/$defs/Overlay"
+          },
+          "title": "Overlays",
+          "type": "array"
+        },
+        "texts": {
+          "items": {
+            "$ref": "#/$defs/TextBlock"
+          },
+          "title": "Texts",
+          "type": "array"
+        },
+        "zoom": {
+          "$ref": "#/$defs/ZoomMotion"
+        },
+        "subtitles": {
+          "$ref": "#/$defs/SubtitleTrack"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        },
+        "ui": {
+          "$ref": "#/$defs/SceneNodeUI"
+        }
+      },
+      "required": [
+        "id",
+        "order",
+        "title",
+        "duration_ms",
+        "narrative",
+        "background"
+      ],
+      "title": "SceneNode",
+      "type": "object"
+    },
+    "SceneNodeUI": {
+      "properties": {
+        "canvas_x": {
+          "default": 0.0,
+          "title": "Canvas X",
+          "type": "number"
+        },
+        "canvas_y": {
+          "default": 0.0,
+          "title": "Canvas Y",
+          "type": "number"
+        },
+        "color_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color Hint"
+        }
+      },
+      "title": "SceneNodeUI",
+      "type": "object"
+    },
+    "SubtitleCue": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "exclusiveMinimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "start_ms",
+        "end_ms",
+        "text"
+      ],
+      "title": "SubtitleCue",
+      "type": "object"
+    },
+    "SubtitleTrack": {
+      "properties": {
+        "enabled": {
+          "default": false,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "mode": {
+          "const": "segment",
+          "default": "segment",
+          "title": "Mode",
+          "type": "string"
+        },
+        "cues": {
+          "items": {
+            "$ref": "#/$defs/SubtitleCue"
+          },
+          "title": "Cues",
+          "type": "array"
+        },
+        "style_preset": {
+          "const": "default_youtube",
+          "default": "default_youtube",
+          "title": "Style Preset",
+          "type": "string"
+        }
+      },
+      "title": "SubtitleTrack",
+      "type": "object"
+    },
+    "TextBlock": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "content": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "start_ms": {
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "exclusiveMinimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "anchor": {
+          "enum": [
+            "top_left",
+            "top_center",
+            "center",
+            "bottom_center"
+          ],
+          "title": "Anchor",
+          "type": "string"
+        },
+        "x_offset_px": {
+          "default": 0,
+          "title": "X Offset Px",
+          "type": "integer"
+        },
+        "y_offset_px": {
+          "default": 0,
+          "title": "Y Offset Px",
+          "type": "integer"
+        },
+        "font_family": {
+          "minLength": 1,
+          "title": "Font Family",
+          "type": "string"
+        },
+        "font_size_px": {
+          "maximum": 256,
+          "minimum": 8,
+          "title": "Font Size Px",
+          "type": "integer"
+        },
+        "font_weight": {
+          "default": 700,
+          "enum": [
+            400,
+            500,
+            600,
+            700,
+            800
+          ],
+          "title": "Font Weight",
+          "type": "integer"
+        },
+        "color_rgba": {
+          "minLength": 4,
+          "title": "Color Rgba",
+          "type": "string"
+        },
+        "stroke_rgba": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stroke Rgba"
+        },
+        "stroke_width_px": {
+          "default": 0,
+          "maximum": 16,
+          "minimum": 0,
+          "title": "Stroke Width Px",
+          "type": "integer"
+        },
+        "bg_rgba": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bg Rgba"
+        },
+        "padding_px": {
+          "default": 0,
+          "maximum": 64,
+          "minimum": 0,
+          "title": "Padding Px",
+          "type": "integer"
+        },
+        "anim": {
+          "default": "none",
+          "enum": [
+            "none",
+            "fade",
+            "pop"
+          ],
+          "title": "Anim",
+          "type": "string"
+        },
+        "z_index": {
+          "default": 0,
+          "title": "Z Index",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "start_ms",
+        "end_ms",
+        "anchor",
+        "font_family",
+        "font_size_px",
+        "color_rgba"
+      ],
+      "title": "TextBlock",
+      "type": "object"
+    },
+    "ZoomMotion": {
+      "properties": {
+        "mode": {
+          "default": "none",
+          "enum": [
+            "none",
+            "zoom_in",
+            "zoom_out"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "start_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Start Ms",
+          "type": "integer"
+        },
+        "end_ms": {
+          "default": 0,
+          "minimum": 0,
+          "title": "End Ms",
+          "type": "integer"
+        },
+        "start_scale": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "Start Scale",
+          "type": "number"
+        },
+        "end_scale": {
+          "default": 1.0,
+          "exclusiveMinimum": 0,
+          "title": "End Scale",
+          "type": "number"
+        },
+        "anchor": {
+          "const": "center",
+          "default": "center",
+          "title": "Anchor",
+          "type": "string"
+        }
+      },
+      "title": "ZoomMotion",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "default": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "settings": {
+      "$ref": "#/$defs/ProjectSettings"
+    },
+    "library_binding": {
+      "$ref": "#/$defs/LibraryBinding"
+    },
+    "analysis": {
+      "$ref": "#/$defs/AnalysisMetadata"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/SceneNode"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "scene_order": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Scene Order",
+      "type": "array"
+    },
+    "notes": {
+      "default": "",
+      "title": "Notes",
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "created_at",
+    "updated_at",
+    "name",
+    "settings",
+    "library_binding"
+  ],
+  "title": "ProjectModel",
+  "type": "object"
+}

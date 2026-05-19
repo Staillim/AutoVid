@@ -1,0 +1,144 @@
+{
+  "$defs": {
+    "RuntimeBinaryCheck": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "configured_path": {
+          "title": "Configured Path",
+          "type": "string"
+        },
+        "resolved_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resolved Path"
+        },
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "executable": {
+          "title": "Executable",
+          "type": "boolean"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Message"
+        }
+      },
+      "required": [
+        "label",
+        "configured_path",
+        "available",
+        "executable"
+      ],
+      "title": "RuntimeBinaryCheck",
+      "type": "object"
+    },
+    "RuntimeDirectoryCheck": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "exists": {
+          "title": "Exists",
+          "type": "boolean"
+        },
+        "writable": {
+          "title": "Writable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label",
+        "path",
+        "exists",
+        "writable"
+      ],
+      "title": "RuntimeDirectoryCheck",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "status": {
+      "enum": [
+        "ok",
+        "degraded"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "ready_for_render": {
+      "title": "Ready For Render",
+      "type": "boolean"
+    },
+    "runtime_root": {
+      "title": "Runtime Root",
+      "type": "string"
+    },
+    "cache_root": {
+      "$ref": "#/$defs/RuntimeDirectoryCheck"
+    },
+    "logs_root": {
+      "$ref": "#/$defs/RuntimeDirectoryCheck"
+    },
+    "ffmpeg": {
+      "$ref": "#/$defs/RuntimeBinaryCheck"
+    },
+    "ffprobe": {
+      "$ref": "#/$defs/RuntimeBinaryCheck"
+    },
+    "issues": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Issues",
+      "type": "array"
+    }
+  },
+  "required": [
+    "status",
+    "ready_for_render",
+    "runtime_root",
+    "cache_root",
+    "logs_root",
+    "ffmpeg",
+    "ffprobe"
+  ],
+  "title": "RuntimeHealthReport",
+  "type": "object"
+}

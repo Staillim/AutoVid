@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.0.0",
+  "project_id": "example-project-001",
+  "created_at": "2026-05-19T18:00:00Z",
+  "updated_at": "2026-05-19T18:00:00Z",
+  "name": "Proyecto minimo de ejemplo",
+  "settings": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "master_audio_asset_id": null,
+    "subtitle_language": "es",
+    "export_preset": "youtube_1080p"
+  },
+  "library_binding": {
+    "library_id": "example-local-library"
+  },
+  "analysis": {
+    "source_type": "manual",
+    "source_asset_id": null,
+    "source_text_sha256": null,
+    "last_analysis_id": null,
+    "last_analysis_provider": null,
+    "last_analysis_model": null
+  },
+  "nodes": [
+    {
+      "id": "scene-example-001",
+      "order": 0,
+      "title": "Escena minima de ejemplo",
+      "enabled": true,
+      "duration_ms": 8000,
+      "narrative": {
+        "source_start_ms": null,
+        "source_end_ms": null,
+        "summary": "Escena de smoke test",
+        "transcript_excerpt": "Ejemplo minimo para validar el pipeline.",
+        "entities": [
+          "NodeAV"
+        ],
+        "narrative_role": "hook",
+        "confidence": 1.0
+      },
+      "background": {
+        "asset": {
+          "asset_id": "asset-bg-example-001",
+          "kind": "video"
+        },
+        "trim_in_ms": 0,
+        "trim_out_ms": 8000,
+        "loop_mode": "cut",
+        "fit_mode": "cover",
+        "blur_background": false
+      },
+      "overlays": [
+        {
+          "id": "overlay-example-001",
+          "asset": {
+            "asset_id": "asset-overlay-example-001",
+            "kind": "image"
+          },
+          "start_ms": 1000,
+          "end_ms": 4000,
+          "x_pct": 0.08,
+          "y_pct": 0.08,
+          "width_pct": 0.25,
+          "height_pct": 0.2,
+          "opacity": 1.0,
+          "enter_anim": "fade",
+          "exit_anim": "fade",
+          "z_index": 1
+        }
+      ],
+      "texts": [
+        {
+          "id": "text-example-001",
+          "content": "Smoke Test NodeAV",
+          "start_ms": 1500,
+          "end_ms": 6000,
+          "anchor": "center",
+          "x_offset_px": 0,
+          "y_offset_px": 0,
+          "font_family": "C:/fonts/Inter-Bold.ttf",
+          "font_size_px": 64,
+          "font_weight": 700,
+          "color_rgba": "#FFFFFF",
+          "stroke_rgba": "#000000",
+          "stroke_width_px": 2,
+          "bg_rgba": null,
+          "padding_px": 0,
+          "anim": "pop",
+          "z_index": 2
+        }
+      ],
+      "zoom": {
+        "mode": "zoom_in",
+        "start_ms": 0,
+        "end_ms": 4000,
+        "start_scale": 1.0,
+        "end_scale": 1.1,
+        "anchor": "center"
+      },
+      "subtitles": {
+        "enabled": true,
+        "mode": "segment",
+        "cues": [
+          {
+            "id": "cue-example-001",
+            "start_ms": 0,
+            "end_ms": 3000,
+            "text": "Ejemplo minimo para validar el pipeline."
+          }
+        ],
+        "style_preset": "default_youtube"
+      },
+      "tags": [
+        "example",
+        "smoke-test"
+      ],
+      "ui": {
+        "canvas_x": 0,
+        "canvas_y": 0,
+        "color_hint": null
+      }
+    }
+  ],
+  "scene_order": [
+    "scene-example-001"
+  ],
+  "notes": "Fixture minima para smoke tests."
+}
